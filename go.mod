@@ -9,6 +9,7 @@ require (
 	gorm.io/gorm v1.25.1
 )
 
+
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
