@@ -6,23 +6,39 @@ import (
 	"strconv"
 	"time"
 
+	"poc1/internal/db"
+
 	kafka "github.com/segmentio/kafka-go"
+	"gorm.io/gorm"
 )
+
+var dbConn *gorm.DB
 
 const (
 	topic         = "purchase-data"
 	brokerAddress = "localhost:9092"
 )
 
-type purchaseData struct {
-	companyName  string
-	companyCNPJ  string
-	value        float64
-	customerName string
-	customerCPF  string
+type Tabler interface {
+	TablePurchase() string
+}
+
+func (purchase) TablePurchase() string {
+	return "purchase"
+}
+
+type purchase struct {
+	ID           int `gorm:"primaryKey"`
+	CompanyName  string
+	CompanyCNPJ  string
+	Value        float64
+	CustomerName string
+	CustomerCPF  string
 }
 
 func main() {
+
+	dbConn = db.OpenConnection()
 
 	ctx := context.Background()
 
@@ -33,6 +49,9 @@ func main() {
 
 func produce(ctx context.Context) {
 
+	//var dbconn *gorm.DB
+	//conn = db.OpenConnection()
+
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:      []string{brokerAddress},
 		Topic:        topic,
@@ -40,26 +59,27 @@ func produce(ctx context.Context) {
 		BatchTimeout: time.Millisecond,
 	})
 
-	p := purchaseData{
-		companyName:  "Empresa ABC",
-		companyCNPJ:  "43.387.863/0001-76",
-		value:        55.0,
-		customerName: "José da Silva",
-		customerCPF:  "981.064.590-20",
-	}
-
 	for i := 1; i <= 100; i++ {
+
+		p := purchase{
+			CompanyName:  "Empresa ABC",
+			CompanyCNPJ:  "43.387.863/0001-76",
+			Value:        55.0,
+			CustomerName: "José da Silva",
+			CustomerCPF:  "981.064.590-20",
+		}
 
 		err := w.WriteMessages(ctx, kafka.Message{
 			Key: []byte(strconv.Itoa(i)),
 			Value: []byte(strconv.Itoa(i) + "ª mensagem recebida : " +
-				p.companyCNPJ + " | " + p.companyName + " | " + p.customerCPF + " | " + p.customerName),
+				p.CompanyCNPJ + " | " + p.CompanyName + " | " + p.CustomerCPF + " | " + p.CustomerName),
 		})
 		if err != nil {
 			panic("Não pôde escrever a mensagem " + err.Error())
 		}
 
-		fmt.Printf("%dª mensagem enviada: %s - %s - %s - %s\n", i, p.companyCNPJ, p.companyName, p.customerCPF, p.customerName)
+		fmt.Printf("%dª mensagem enviada: %s - %s - %s - %s\n", i, p.CompanyCNPJ, p.CompanyName, p.CustomerCPF, p.CustomerName)
+		dbConn.Create(&p)
 
 	}
 
@@ -78,6 +98,7 @@ func consume(ctx context.Context) {
 		if err != nil {
 			panic("Não pôde ler a mensagem " + err.Error())
 		}
+		//dbConn.Create(&c)
 		fmt.Println(string(msg.Value))
 	}
 }
